@@ -1,0 +1,516 @@
+---
+title: "Project-2"
+author: "Palak"
+date: "11/21/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Step-1 Data exploration
+```{r}
+# Setting working directory
+setwd("C:/Users/palak/Dropbox/NYU courses/Fall 2020/Business analytics/BA Project 2/Data-20201119T211950Z-001/Data")
+
+# Reading CSV
+app_train<- read.csv(file = 'application_train.csv',header = TRUE, stringsAsFactors = TRUE)
+head(app_train)
+```
+```{r}
+# Inintialing required libraries
+library(plyr)
+library(readr)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(mlbench)
+library(dplyr)
+library(tidyverse)
+library(dataQualityR)
+library(ggplot2)
+library(ROSE)
+library(rpart)
+library(gbm)
+library(mlbench)
+library(caret)
+library(xgboost)
+library(caret)
+```
+
+```{r}
+# Checking data quality
+
+# Script loads a file and produces a data quality report for
+# numerical variables: "dq_num.csv"
+# categorical variables: "dq_cat.cs"
+
+setwd("C:/Users/palak/Dropbox/NYU courses/Fall 2020/Business analytics/BA Project 2/Data-20201119T211950Z-001/Data")
+#load data
+app_train<- read.csv(file = 'application_train.csv',header = TRUE, stringsAsFactors = TRUE)
+
+library(dataQualityR)   #dataquality package
+
+checkDataQuality(data = app_train, 
+                 out.file.num ="dq_num.csv", 
+                 out.file.cat= "dq_cat.csv")   #filename for report
+
+dq_num<-read.csv("C:/Users/palak/Dropbox/NYU courses/Fall 2020/Business analytics/BA Project 2/Data-20201119T211950Z-001/Data/dq_num.csv")
+
+dq_cat<-read.csv("C:/Users/palak/Dropbox/NYU courses/Fall 2020/Business analytics/BA Project 2/Data-20201119T211950Z-001/Data/dq_cat.csv")
+
+View(dq_num)   
+View(dq_cat)
+```
+```{r}
+names(app_train)
+```
+
+```{r}
+app_train_new = app_train %>% select(TARGET,CODE_GENDER,NAME_CONTRACT_TYPE,FLAG_OWN_CAR,FLAG_OWN_REALTY,CNT_CHILDREN
+                                     ,AMT_INCOME_TOTAL,AMT_CREDIT,AMT_ANNUITY,AMT_GOODS_PRICE,NAME_INCOME_TYPE,
+                                      NAME_EDUCATION_TYPE,NAME_FAMILY_STATUS,NAME_HOUSING_TYPE
+                                      ,REGION_POPULATION_RELATIVE,DAYS_BIRTH,
+                                       DAYS_EMPLOYED, FLAG_EMAIL,
+                                       CNT_FAM_MEMBERS,WEEKDAY_APPR_PROCESS_START
+                                       ,HOUR_APPR_PROCESS_START,FLAG_DOCUMENT_2,FLAG_DOCUMENT_3,
+                                        EXT_SOURCE_1,EXT_SOURCE_2,EXT_SOURCE_3,
+                                      
+                                     AMT_REQ_CREDIT_BUREAU_DAY,AMT_REQ_CREDIT_BUREAU_MON,AMT_REQ_CREDIT_BUREAU_YEAR,
+                                        )
+                                           
+                                         
+names(app_train_new)
+```
+
+```{r}
+# checking data quality again for new dataset app_train_new
+checkDataQuality(data = app_train_new, 
+                 out.file.num ="dq_num1.csv", 
+                 out.file.cat= "dq_cat1.csv")
+dq_num1<-read.csv("dq_num1.csv")
+dq_cat1<-read.csv("dq_cat1.csv")
+View(dq_num1)   
+View(dq_cat1) 
+```
+
+```{r}
+# Cleaning new data by Imputing Null/Missing values 
+
+app_train_new1<- app_train_new[!complete.cases(app_train_new), ]
+names(app_train_new1)
+summary(app_train_new1)
+
+```
+
+
+```{r}
+app_train_new1$AMT_ANNUITY<-ifelse(is.na(app_train_new1$AMT_ANNUITY),
+                                  median(app_train_new1$AMT_ANNUITY[!is.na(app_train_new1$AMT_ANNUITY)]),
+                                      app_train_new1$AMT_ANNUITY)
+
+app_train_new1$AMT_GOODS_PRICE<-ifelse(is.na(app_train_new1$AMT_GOODS_PRICE),
+                                median(app_train_new1$AMT_GOODS_PRICE[!is.na(app_train_new1$AMT_GOODS_PRICE)]),
+                                      app_train_new1$AMT_GOODS_PRICE)
+
+app_train_new1$CNT_FAM_MEMBERS<-ifelse(is.na(app_train_new1$CNT_FAM_MEMBERS),
+                                median(app_train_new1$CNT_FAM_MEMBERS[!is.na(app_train_new1$CNT_FAM_MEMBERS)]),
+                                      app_train_new1$CNT_FAM_MEMBERS)
+
+app_train_new1$EXT_SOURCE_1<-ifelse(is.na(app_train_new1$EXT_SOURCE_1),
+                                  median(app_train_new1$EXT_SOURCE_1[!is.na(app_train_new1$EXT_SOURCE_1)]),
+                                      app_train_new1$EXT_SOURCE_1)
+
+app_train_new1$EXT_SOURCE_2<-ifelse(is.na(app_train_new1$EXT_SOURCE_2),
+                                  median(app_train_new1$EXT_SOURCE_2[!is.na(app_train_new1$EXT_SOURCE_2)]),
+                                      app_train_new1$EXT_SOURCE_2)
+
+app_train_new1$EXT_SOURCE_3<-ifelse(is.na(app_train_new1$EXT_SOURCE_3),
+                                  median(app_train_new1$EXT_SOURCE_3[!is.na(app_train_new1$EXT_SOURCE_3)]),
+                                      app_train_new1$EXT_SOURCE_3)
+
+app_train_new1$AMT_REQ_CREDIT_BUREAU_DAY<-ifelse(is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_DAY),
+                                  median(app_train_new1$AMT_REQ_CREDIT_BUREAU_DAY[!is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_DAY)]),
+                                      app_train_new1$AMT_REQ_CREDIT_BUREAU_DAY)
+
+app_train_new1$AMT_REQ_CREDIT_BUREAU_MON<-ifelse(is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_MON),
+                                  median(app_train_new1$AMT_REQ_CREDIT_BUREAU_MON[!is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_MON)]),
+                                      app_train_new1$AMT_REQ_CREDIT_BUREAU_MON)
+
+app_train_new1$AMT_REQ_CREDIT_BUREAU_YEAR<-ifelse(is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_YEAR),
+                                  median(app_train_new1$AMT_REQ_CREDIT_BUREAU_YEAR[!is.na(app_train_new1$AMT_REQ_CREDIT_BUREAU_YEAR)]),
+                                      app_train_new1$AMT_REQ_CREDIT_BUREAU_YEAR)
+
+```
+
+
+```{r}
+names(app_train_new1)[16]<-paste("YEARS_BIRTH")
+names(app_train_new1)[17]<-paste("YEARS_EMPLOYED")
+
+names(app_train_new1)
+```
+
+```{r}
+app_train_new1$YEARS_BIRTH <- (-1*(app_train_new1$YEARS_BIRTH)/365)
+app_train_new1$YEARS_EMPLOYED <- (-1*(app_train_new1$YEARS_EMPLOYED)/365)
+app_train_new1$YEARS_EMPLOYED <- round(app_train_new1$YEARS_EMPLOYED,2)
+app_train_new1$YEARS_EMPLOYED[app_train_new1$YEARS_EMPLOYED == -1000.67] <- 0
+```
+
+```{r}
+# checking NA count after removing NA's in numerical columns
+na_count <-sapply(app_train_new1, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count
+```
+
+```{r}
+# more calculations of data
+app_train_new1$Credit_Term = app_train_new1$AMT_CREDIT/app_train_new1$AMT_ANNUITY
+app_train_new1$CREDIT_INCOME_PERCENT = app_train_new1$AMT_CREDIT/app_train_new1$AMT_INCOME_TOTAL
+#str(app_train_new1)
+summary(app_train_new1)
+dim(app_train_new1)
+
+```
+
+```{r}
+#write.csv(app_train_new1, file = "Final_new.csv")
+```
+
+```{r}
+################################ Modelling Process########
+```
+
+```{r}
+table(app_train_new1$TARGET)
+prop.table(table(app_train_new1$TARGET)) # to know proportions
+```
+```{r}
+df_new1 = app_train_new1
+
+index <- sample(1:nrow(df_new1),(.1)*nrow(df_new1))  # technique to reduce dataset
+df_new1<- df_new1 [index, ]
+
+str(df_new1)
+
+```
+
+```{r}
+# Since target variable is higly imbalanced , we need to sample our dataset
+
+#Sampling Method 1: ROSE
+library(caret)  #function createDataPartition()
+#Lets create our training dataset with a 70/30 split
+
+outcomeName <- 'TARGET'
+predictorNames <- names(df_new1)[names(df_new1) != outcomeName]
+
+set.seed(123)
+index <- createDataPartition(df_new1$TARGET, p=0.7, list=FALSE)
+train.imbalanced <- df_new1[ index,] 
+test<- df_new1[ -index,] 
+
+```
+
+```{r}
+#table(app_train$TARGET) # original
+table(train.imbalanced$TARGET) # Train dataset that is 70 % of original
+
+prop.table(table(train.imbalanced$TARGET))  #Apps is the minority class at 5.6%
+barplot(prop.table(table(train.imbalanced$TARGET)))
+
+train.imbalanced$TARGET<-as.factor(train.imbalanced$TARGET)
+```
+```{r}
+
+#train.both<-ovun.sample(TARGET~., data = train.imbalanced, method = "both", p= 0.5)$data   # used N= 376020 previously
+#prop.table(table(train.both$TARGET))
+#table(train.both$TARGET)
+```
+
+```{r}
+data_balanced = ovun.sample(TARGET~., data = df_new1, method = "both",  p=0.5)$data
+prop.table(table(data_balanced$TARGET))
+
+train_data_Bl = data_balanced[index, ]
+test_data_Bl  = data_balanced[ -index,]
+train_data_Bl$TARGET = as.factor(train_data_Bl$TARGET)
+```
+```{r}
+names(train_data_Bl)
+```
+
+```{r}
+# model setup
+#names(getModelInfo())
+#modelLookup(model='rf')  # To find the parameters of a model that can be tuned
+#modelLookup(model='gbm')
+```
+
+```{r}
+fitControl <- trainControl(method = "none")   # control parameters for training
+                                              # see help(trainControl) for details
+```
+
+```{r}
+### RF & gbm  Model
+rf<-train(train_data_Bl[,predictorNames],train_data_Bl[,outcomeName],  # using sampling train df
+                method='rf',
+                trControl=fitControl)
+
+gbm<-train(train_data_Bl[,predictorNames],train_data_Bl[,outcomeName],
+                 method='gbm',
+                 trControl=fitControl)
+```
+```{r}
+rfImp<-varImp(rf)  # computes variable importance for regression and classification models
+rfImp
+plot(rfImp, top = 20)
+gbmImp<-varImp(gbm) #generates error.  run with line below
+
+gbmImp<-summary(gbm)
+gbmImp
+plot(gbmImp, top = 20)
+
+```
+
+```{r}
+# measuring performance
+
+test_data_Bl$TARGET<-as.factor(test_data_Bl$TARGET)
+rf.predict<-predict(rf,test_data_Bl[,predictorNames],type="raw")
+confusionMatrix(rf.predict,test_data_Bl[,outcomeName], positive = "1",mode = 'prec_recall')
+
+gbm.predict<-predict(gbm,test_data_Bl[,predictorNames],type="raw")
+confusionMatrix(gbm.predict,test_data_Bl[,outcomeName], positive = "1",mode = 'prec_recall')
+```
+
+```{r}
+# draw ROC curve and perform visual check for better accurancy/performacen
+library(pROC)
+gbm.probs <- predict(gbm,test_data_Bl[,predictorNames],type="prob")    
+rf.probs <- predict(rf,test_data_Bl[,predictorNames],type="prob") 
+
+gbm.plot<-plot(roc(test_data_Bl$TARGET,gbm.probs[,2]))
+rf.plot<-lines(roc(test_data_Bl$TARGET,rf.probs[,2]), col="blue")
+legend("bottomright", legend=c("rf", "gbm_tuned"), col=c("blue", "black"), lwd=2)  # we can see who RF outperfoms GBM
+```
+
+```{r}
+auc(test_data_Bl$TARGET,gbm.probs[,2])
+```
+#Now Predicting of Applications to Score dataset
+```{r}
+# Setting working directory
+setwd("C:/Users/palak/Dropbox/NYU courses/Fall 2020/Business analytics/BA Project 2/Data-20201119T211950Z-001/Data")
+
+# Reading CSV
+app_score<- read.csv(file = 'applications_to_score.csv',header = TRUE, stringsAsFactors = TRUE)
+head(app_score)
+dim(app_score)   # 15372 rows and 122 columns
+``` 
+```{r}
+# checking data quality for score dataset
+checkDataQuality(data = app_score, 
+                 out.file.num ="dq_num2.csv", 
+                 out.file.cat= "dq_cat2.csv")
+dq_num2<-read.csv("dq_num2.csv")
+dq_cat2<-read.csv("dq_cat2.csv")
+View(dq_num2)   
+View(dq_cat2) 
+```
+```{r}
+names(app_score)
+```
+
+
+```{r}
+app_score_new = app_score %>% select(TARGET,CODE_GENDER,NAME_CONTRACT_TYPE,FLAG_OWN_CAR,FLAG_OWN_REALTY,CNT_CHILDREN
+                                     ,AMT_INCOME_TOTAL,AMT_CREDIT,AMT_ANNUITY,AMT_GOODS_PRICE,NAME_INCOME_TYPE,
+                                      NAME_EDUCATION_TYPE,NAME_FAMILY_STATUS,NAME_HOUSING_TYPE
+                                      ,REGION_POPULATION_RELATIVE,DAYS_BIRTH,DAYS_EMPLOYED, FLAG_EMAIL,
+                                       CNT_FAM_MEMBERS,WEEKDAY_APPR_PROCESS_START
+                                       ,HOUR_APPR_PROCESS_START,FLAG_DOCUMENT_2,FLAG_DOCUMENT_3,
+                                        EXT_SOURCE_1,EXT_SOURCE_2,EXT_SOURCE_3,
+                                        AMT_REQ_CREDIT_BUREAU_DAY,AMT_REQ_CREDIT_BUREAU_MON,AMT_REQ_CREDIT_BUREAU_YEAR)
+                                        
+                                           
+                                         
+names(app_score_new)
+
+dim(app_score_new)
+
+```
+```{r}
+# Again checking data quality for score dataset
+checkDataQuality(data = app_score_new, 
+                 out.file.num ="dq_num2.csv", 
+                 out.file.cat= "dq_cat2.csv")
+dq_num2<-read.csv("dq_num2.csv")
+dq_cat2<-read.csv("dq_cat2.csv")
+View(dq_num2)   
+View(dq_cat2)
+```
+```{r}
+# Cleaning new data by Imputing Null/Missing values 
+
+app_score_new1<- app_score_new[!complete.cases(app_score_new), ]
+names(app_score_new1)
+summary(app_score_new1)
+dim(app_score_new1)
+```
+
+
+```{r}
+# Imputing some numerical columns using Median
+app_score_new1$AMT_ANNUITY<-ifelse(is.na(app_score_new1$AMT_ANNUITY),
+                                  median(app_score_new1$AMT_ANNUITY[!is.na(app_score_new1$AMT_ANNUITY)]),
+                                      app_score_new1$AMT_ANNUITY)
+
+app_score_new1$AMT_GOODS_PRICE<-ifelse(is.na(app_score_new1$AMT_GOODS_PRICE),
+                                median(app_score_new1$AMT_GOODS_PRICE[!is.na(app_score_new1$AMT_GOODS_PRICE)]),
+                                      app_score_new1$AMT_GOODS_PRICE)
+
+app_score_new1$CNT_FAM_MEMBERS<-ifelse(is.na(app_score_new1$CNT_FAM_MEMBERS),
+                                median(app_score_new1$CNT_FAM_MEMBERS[!is.na(app_score_new1$CNT_FAM_MEMBERS)]),
+                                  app_score_new1$CNT_FAM_MEMBERS)
+
+app_score_new1$EXT_SOURCE_1<-ifelse(is.na(app_score_new1$EXT_SOURCE_1),
+                                  median(app_score_new1$EXT_SOURCE_1[!is.na(app_score_new1$EXT_SOURCE_1)]),
+                                      app_score_new1$EXT_SOURCE_1)
+
+app_score_new1$EXT_SOURCE_2<-ifelse(is.na(app_score_new1$EXT_SOURCE_2),
+                                  median(app_score_new1$EXT_SOURCE_2[!is.na(app_score_new1$EXT_SOURCE_2)]),
+                                      app_score_new1$EXT_SOURCE_2)
+
+app_score_new1$EXT_SOURCE_3<-ifelse(is.na(app_score_new1$EXT_SOURCE_3),
+                                  median(app_score_new1$EXT_SOURCE_3[!is.na(app_score_new1$EXT_SOURCE_3)]),
+                                      app_score_new1$EXT_SOURCE_3)
+
+app_score_new1$AMT_REQ_CREDIT_BUREAU_DAY<-ifelse(is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_DAY),
+                                  median(app_score_new1$AMT_REQ_CREDIT_BUREAU_DAY[!is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_DAY)]),
+                                      app_score_new1$AMT_REQ_CREDIT_BUREAU_DAY)
+
+app_score_new1$AMT_REQ_CREDIT_BUREAU_MON<-ifelse(is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_MON),
+                                  median(app_score_new1$AMT_REQ_CREDIT_BUREAU_MON[!is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_MON)]),
+                                      app_score_new1$AMT_REQ_CREDIT_BUREAU_MON)
+
+app_score_new1$AMT_REQ_CREDIT_BUREAU_YEAR<-ifelse(is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_YEAR),
+                                  median(app_score_new1$AMT_REQ_CREDIT_BUREAU_YEAR[!is.na(app_score_new1$AMT_REQ_CREDIT_BUREAU_YEAR)]),
+                                      app_score_new1$AMT_REQ_CREDIT_BUREAU_YEAR)
+
+```
+
+```{r}
+# Again checking data quality for score dataset
+checkDataQuality(data = app_score_new1, 
+                 out.file.num ="dq_num2.csv", 
+                 out.file.cat= "dq_cat2.csv")
+dq_num2<-read.csv("dq_num2.csv")
+dq_cat2<-read.csv("dq_cat2.csv")
+View(dq_num2)   
+View(dq_cat2)
+```
+
+```{r}
+# conersion on birth and employed columns
+names(app_score_new1)[16]<-paste("YEARS_BIRTH")
+names(app_score_new1)[17]<-paste("YEARS_EMPLOYED")
+
+names(app_score_new1)
+```
+
+```{r}
+app_score_new1$YEARS_BIRTH <- (-1*(app_score_new1$YEARS_BIRTH)/365)
+app_score_new1$YEARS_EMPLOYED <- (-1*(app_score_new1$YEARS_EMPLOYED)/365)
+app_score_new1$YEARS_EMPLOYED <- round(app_score_new1$YEARS_EMPLOYED,2)
+app_score_new1$YEARS_EMPLOYED[app_score_new1$YEARS_EMPLOYED == -1000.67] <- 0
+```
+
+```{r}
+# checking NA count after removing NA's in numerical columns
+na_count <-sapply(app_score_new1, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count
+```
+```{r}
+# more calculations of data
+app_score_new1$Credit_Term = app_score_new1$AMT_CREDIT/app_score_new1$AMT_ANNUITY
+app_score_new1$CREDIT_INCOME_PERCENT = app_score_new1$AMT_CREDIT/app_score_new1$AMT_INCOME_TOTAL
+#str(app_train_new1)
+summary(app_score_new1)
+dim(app_score_new1)
+dim(df_new1)
+```
+#Predictions on this app_score dataset
+Since, our GBM model performed good overall as compared to others,
+therefore we will do our predictions on the basis of that
+
+```{r}
+app_score_new1$CNT_FAM_MEMBERS = as.numeric(app_score_new1$CNT_FAM_MEMBERS)
+app_score_new1$TARGET = as.factor(app_score_new1$TARGET)
+
+
+sapply(train_data_Bl,class)
+sapply(app_score_new1,class)
+
+```
+
+```{r}
+outcomeName <- 'TARGET'
+predictorNames <- names(df_new1)[names(df_new1) != outcomeName]
+predictorNames1<- names(app_score_new1)[names(app_score_new1) != outcomeName]
+
+```
+
+```{r}
+data_balanced = ovun.sample(TARGET~., data = df_new1, method = "both",  p=0.2)$data
+prop.table(table(data_balanced$TARGET))
+
+train_data_Bl = data_balanced[index, ]
+test_data_Bl  = data_balanced[ -index,]
+train_data_Bl$TARGET = as.factor(train_data_Bl$TARGET)
+
+```
+
+
+```{r}
+fitControl <- trainControl(method = "none")   # control parameters for training
+                                              # see help(trainControl) for details
+```
+
+```{r}
+### RF & gbm  Model
+gbm<-train(train_data_Bl[,predictorNames],train_data_Bl[,outcomeName],
+                 method='gbm',
+                 trControl=fitControl)
+
+
+```
+
+```{r}
+app_score_new1$TARGET <- as.factor(app_score_new1$TARGET)
+test_data_Bl$TARGET = as.factor(test_data_Bl$TARGET)
+```
+
+```{r}
+gbm.predict<-predict(gbm,test_data_Bl[,predictorNames],type="raw")
+```
+
+```{r}
+gbm.predict2<-predict(gbm,app_score_new1[,predictorNames1],type="raw")
+```
+
+```{r}
+#app_score_new1$TARGET <- gbm.predict2
+table(app_score_new1$TARGET)
+#prop.table(table(app_score_new1$TARGET))
+#dim(app_score_new1)
+
+final_Group2 = data.frame(SK_ID_CURR = app_score$SK_ID_CURR)
+final_Group2$Target = gbm.predict2
+view(final_Group2)
+write.csv(final_Group2, file = "finalsubmission_Group2.csv")
+```
+
